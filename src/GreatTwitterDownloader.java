@@ -1,8 +1,7 @@
 import javafx.beans.property.SimpleDoubleProperty;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.mutable.MutableBoolean;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
@@ -42,7 +41,6 @@ public class GreatTwitterDownloader
 	private final int threadLimit = 40;
 	private int threadCount = 0;
 
-
 	public GreatTwitterDownloader()
 	{
 		simpleDoubleProperty = new SimpleDoubleProperty();
@@ -59,12 +57,17 @@ public class GreatTwitterDownloader
 
 	public void DownloaderWithKeyword(String searchKeyword)
 	{
-		Queue <String> downloadQueue = new LinkedList();
+		Queue <Pair> downloadQueue = new LinkedList();
 		MutableBoolean threadStatus = new MutableBoolean();
 		threadStatus.setTrue();
 
-		new DownloaderWithKeywordThread(searchKeyword , downloadQueue , threadStatus).start();
-		new DownloadThreadManager(searchKeyword , downloadQueue , threadStatus).start();
+		DownloadWithKeywordThread downloadWithKeywordThread = new DownloadWithKeywordThread(searchKeyword , downloadQueue , threadStatus);
+		downloadWithKeywordThread.setDaemon(true);
+		downloadWithKeywordThread.start();
+
+		DownloadThreadManager downloadThreadManager = new DownloadThreadManager(searchKeyword , downloadQueue , threadStatus);
+		downloadThreadManager.setDaemon(true);
+		downloadThreadManager.start();
 	}
 
 
@@ -91,7 +94,7 @@ public class GreatTwitterDownloader
 		threadCount += addThreadCount;
 	}
 
-	private String pollFromQueue(Queue <String> downloadQueue)
+	private Pair pollFromQueue(Queue <Pair> downloadQueue)
 	{
 		synchronized (lockForQueue)
 		{
@@ -99,22 +102,35 @@ public class GreatTwitterDownloader
 		}
 	}
 
-	private void pushToQueue(String url , Queue <String> downloadQueue)
+	private void pushToQueue(Pair pair , Queue <Pair> downloadQueue)
 	{
 		synchronized (lockForQueue)
 		{
-			downloadQueue.offer(url);
+			downloadQueue.offer(pair);
 		}
 	}
 
 
-	private class DownloaderWithKeywordThread extends Thread
+	private class Pair
+	{
+		String url;
+		String filename;
+
+		public Pair(String url , String filename)
+		{
+			this.url = url;
+			this.filename = filename;
+		}
+	}
+
+
+	private class DownloadWithKeywordThread extends Thread
 	{
 		private String searchKeyword;
-		private Queue <String> downloadQueue;
+		private Queue <Pair> downloadQueue;
 		MutableBoolean threadStatus;
 
-		public DownloaderWithKeywordThread(String searchKeyword , Queue <String> downloadQueue , MutableBoolean threadStatus)
+		public DownloadWithKeywordThread(String searchKeyword , Queue <Pair> downloadQueue , MutableBoolean threadStatus)
 		{
 			this.searchKeyword = searchKeyword;
 			this.downloadQueue = downloadQueue;
@@ -139,6 +155,7 @@ public class GreatTwitterDownloader
 
 			Calendar calendar = Calendar.getInstance();
 			SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-M-d");
+			SimpleDateFormat simpleDateFormatFilename = new SimpleDateFormat("yyyy-MM-dd");
 
 
 			try
@@ -153,13 +170,16 @@ public class GreatTwitterDownloader
 
 				for(int i = 0 ; i < dateLimite ; ++i)
 				{
-					System.out.println(simpleDateFormat.format(calendar.getTime()));
+					System.out.println(simpleDateFormatFilename.format(calendar.getTime()));
 
 					int currentSize = 0 , lastSize = 0;
 					int trueTotalSize;
+					int currentPageNumber = 1;
+					String untilDate;
 
 					String searchURL;
 
+					untilDate = simpleDateFormatFilename.format(calendar.getTime());
 					searchURL = " until:" + simpleDateFormat.format(calendar.getTime());
 					calendar.add(Calendar.DATE , -1);
 					searchURL = " since:" + simpleDateFormat.format(calendar.getTime()) + searchURL;
@@ -186,7 +206,7 @@ public class GreatTwitterDownloader
 						if (currentSize > lastSize)
 						{
 							for (int currentDownloadIndex = lastSize; currentDownloadIndex < currentSize; ++currentDownloadIndex)
-								pushToQueue(imageElementList.get(currentDownloadIndex).getAttribute("src"), downloadQueue);
+								pushToQueue(new Pair(imageElementList.get(currentDownloadIndex).getAttribute("src") , untilDate + "_" + StringUtils.leftPad("" + currentPageNumber++ , 2 , "0")) , downloadQueue);
 
 							lastSize = currentSize;
 						}
@@ -215,10 +235,10 @@ public class GreatTwitterDownloader
 	class DownloadThreadManager extends Thread
 	{
 		String folderPath;
-		Queue <String> downloadQueue;
+		Queue <Pair> downloadQueue;
 		MutableBoolean threadStatus;
 
-		public DownloadThreadManager(String folderPath , Queue <String> downloadQueue , MutableBoolean threadStatus)
+		public DownloadThreadManager(String folderPath , Queue <Pair> downloadQueue , MutableBoolean threadStatus)
 		{
 			this.folderPath = folderPath;
 			this.downloadQueue = downloadQueue;
@@ -249,12 +269,13 @@ public class GreatTwitterDownloader
 
 	class DownloadThread extends Thread
 	{
-		String imageUrl , folderPath;
+		Pair fileData;
+		String folderPath;
 		int downloadTimeout = 30000;
 
-		public DownloadThread(String imageUrl , String folderPath)
+		public DownloadThread(Pair fileData , String folderPath)
 		{
-			this.imageUrl = imageUrl;
+			this.fileData = fileData;
 			this.folderPath = folderPath;
 		}
 
@@ -263,8 +284,8 @@ public class GreatTwitterDownloader
 		{
 			try
 			{
-				String extension = imageUrl.substring( imageUrl.lastIndexOf(".") + 1 );
-				String filename = imageUrl.substring( imageUrl.lastIndexOf("/") + 1 );
+				String extension = fileData.url.substring( fileData.url.lastIndexOf(".") + 1 );
+				String filename = fileData.filename + "." + extension;
 				filename = filename.replace("\\/><:\"|?*" , "A");
 
 				while(new File(folderPath + "/" + filename).exists())
@@ -274,7 +295,7 @@ public class GreatTwitterDownloader
 				}
 
 
-				URL url = new URL(imageUrl);
+				URL url = new URL(fileData.url);
 
 				URLConnection urlConnection = url.openConnection();
 				urlConnection.setConnectTimeout(downloadTimeout);
