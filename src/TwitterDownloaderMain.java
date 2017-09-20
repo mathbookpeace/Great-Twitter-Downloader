@@ -29,7 +29,8 @@ public class TwitterDownloaderMain extends Application
 
 		primaryStage.setTitle("Great Twitter Downloader !");
 
-		SimpleDoubleProperty simpleDoubleProperty = greatTwitterDownloader.GetProgressProperty();
+		SimpleDoubleProperty simpleDoubleProperty = new SimpleDoubleProperty();
+		greatTwitterDownloader.SetSimpleDoubleProperty(simpleDoubleProperty);
 
 		ProgressBar progressBar = new ProgressBar();
 		progressBar.progressProperty().bind(simpleDoubleProperty);
