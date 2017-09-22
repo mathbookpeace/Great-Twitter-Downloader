@@ -1,14 +1,12 @@
 import javafx.application.Application;
 import javafx.beans.property.SimpleDoubleProperty;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.ProgressBar;
-import javafx.scene.control.ProgressIndicator;
-import javafx.scene.control.TextField;
-import javafx.scene.layout.Pane;
+import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+
+import java.time.LocalDate;
 
 
 /**
@@ -16,6 +14,8 @@ import javafx.stage.Stage;
  */
 public class TwitterDownloaderMain extends Application
 {
+	private GreatTwitterDownloader greatTwitterDownloader;
+
 	public static void main (String[] args)
 	{
 		launch(args);
@@ -24,7 +24,7 @@ public class TwitterDownloaderMain extends Application
 	@Override
 	public void start(Stage primaryStage)
 	{
-		GreatTwitterDownloader greatTwitterDownloader = new GreatTwitterDownloader();
+		greatTwitterDownloader = new GreatTwitterDownloader();
 
 
 		primaryStage.setTitle("Great Twitter Downloader !");
@@ -32,49 +32,83 @@ public class TwitterDownloaderMain extends Application
 		SimpleDoubleProperty simpleDoubleProperty = new SimpleDoubleProperty();
 		greatTwitterDownloader.SetSimpleDoubleProperty(simpleDoubleProperty);
 
+
+		// progress
 		ProgressBar progressBar = new ProgressBar();
+		progressBar.setPrefSize(420 , 20);
 		progressBar.progressProperty().bind(simpleDoubleProperty);
-		progressBar.setLayoutX(1);
-		progressBar.setLayoutY(29);
-		progressBar.setPrefWidth(469);
 
 		ProgressIndicator progressIndicator = new ProgressIndicator();
+		progressIndicator.setPrefSize(40 , 40);
 		progressIndicator.progressProperty().bind(simpleDoubleProperty);
-		progressIndicator.setLayoutX(484);
-		progressIndicator.setLayoutY(3);
 
+
+		// date
+		DatePicker sinceDatePicker = new DatePicker();
+		sinceDatePicker.setPrefSize(210 , 20);
+		sinceDatePicker.setValue(LocalDate.now().minusDays(1));
+
+		DatePicker untilDatePicker = new DatePicker();
+		untilDatePicker.setPrefSize(209 , 20);
+		untilDatePicker.setValue(LocalDate.now());
+
+
+		// keyword
 		TextField urlTextField = new TextField();
-		urlTextField.setLayoutX(1);
-		urlTextField.setLayoutY(1);
-		urlTextField.setPrefWidth(400);
+		urlTextField.setPrefSize(370 , 20);
 
 		Button downloadButton = new Button();
-		downloadButton.setLayoutX(402);
-		downloadButton.setLayoutY(1);
-		downloadButton.setPrefWidth(68);
+		downloadButton.setPrefSize(49 , 20);
 		downloadButton.setText("Start");
-		downloadButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent event) {
-				String searchKeyword = urlTextField.getText();
-				if(!searchKeyword.isEmpty())
+		downloadButton.setOnAction(event ->
 				{
-					urlTextField.setText("");
-					greatTwitterDownloader.DownloaderWithKeyword(searchKeyword);
+					String searchKeyword = urlTextField.getText();
+					LocalDate sinceDate = sinceDatePicker.getValue();
+					LocalDate untilDate = untilDatePicker.getValue();
+					if(!searchKeyword.isEmpty())
+					{
+						urlTextField.setText("");
+						greatTwitterDownloader.DownloaderWithKeyword(searchKeyword , sinceDate , untilDate);
+					}
 				}
-			}
-		});
+		);
 
 
-		Pane rootPane = new Pane();
-		rootPane.getChildren().add(downloadButton);
-		rootPane.getChildren().add(urlTextField);
-		rootPane.getChildren().add(progressBar);
-		rootPane.getChildren().add(progressIndicator);
+
+		HBox hBox1_1 = new HBox();
+		hBox1_1.setSpacing(1);
+		hBox1_1.getChildren().add(urlTextField);
+		hBox1_1.getChildren().add(downloadButton);
+
+		HBox hBox1_2 = new HBox();
+		hBox1_2.setSpacing(1);
+		hBox1_2.getChildren().add(sinceDatePicker);
+		hBox1_2.getChildren().add(untilDatePicker);
+
+		HBox hBox1_3 = new HBox();
+		hBox1_3.getChildren().add(progressBar);
+
+		VBox vBox = new VBox();
+		vBox.setSpacing(1);
+		vBox.getChildren().add(hBox1_1);
+		vBox.getChildren().add(hBox1_2);
+		vBox.getChildren().add(hBox1_3);
+
+		HBox hBoxRoot = new HBox();
+		hBoxRoot.setSpacing(1);
+		hBoxRoot.getChildren().add(vBox);
+		hBoxRoot.getChildren().add(progressIndicator);
 
 
-		primaryStage.setScene(new Scene(rootPane, 524, 49));
+		primaryStage.setScene(new Scene(hBoxRoot));
 		primaryStage.setResizable(false);
 		primaryStage.show();
+	}
+
+	@Override
+	public void stop()
+	{
+		System.out.println("Terminate");
+		greatTwitterDownloader.Dispose();
 	}
 }

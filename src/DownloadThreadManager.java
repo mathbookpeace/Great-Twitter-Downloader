@@ -16,7 +16,7 @@ public class DownloadThreadManager extends Thread
 	{
 		try
 		{
-			while(true)
+			while(GreatTwitterDownloader.isActive || downloadQueue.size() > 0)
 			{
 				if(downloadQueue.size() > 0)
 				{

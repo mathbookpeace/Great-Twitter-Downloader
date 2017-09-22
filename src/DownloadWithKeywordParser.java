@@ -13,34 +13,42 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-public class DownloadWithKeywordThread extends Thread
+import static java.time.temporal.ChronoUnit.DAYS;
+
+public class DownloadWithKeywordParser extends Thread
 {
 	private String searchKeyword;
 	private DownloadQueue downloadQueue;
 	DateCounter dateCounter;
-	private double dateLimit = 1000;
+	LocalDate sinceDate = null , untilDate = null;
 
 //----------------------------------------------------------------------------------------------------------------------------------------
 
-	public DownloadWithKeywordThread(String searchKeyword , DownloadQueue downloadQueue , DateCounter dateCounter)
+	public DownloadWithKeywordParser(String searchKeyword , LocalDate sinceDate , LocalDate untilDate , DownloadQueue downloadQueue , DateCounter dateCounter)
 	{
 		this.searchKeyword = searchKeyword;
 		this.downloadQueue = downloadQueue;
 		this.dateCounter = dateCounter;
+		this.sinceDate = sinceDate;
+		this.untilDate = untilDate;
 	}
 
 
 	public void run()
 	{
-		Calendar calendar = Calendar.getInstance();
-		SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-M-d");
-		SimpleDateFormat simpleDateFormatFilename = new SimpleDateFormat("yyyy-MM-dd");
+		LocalDate currentDate = untilDate;
+		DateTimeFormatter dateTimeFormat = DateTimeFormatter.ofPattern("yyyy-M-d");
+		DateTimeFormatter dateTimeFormatFilename = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-		File folder = new File(searchKeyword.replace("\\/><:\"|?*" , "A"));
+		File folder = new File("Download");
+		if(!folder.exists())
+			folder.mkdir();
+
+		folder = new File("Download/" + searchKeyword.replace("\\/><:\"|?*" , "A"));
 		if(!folder.exists())
 			folder.mkdir();
 
@@ -52,23 +60,23 @@ public class DownloadWithKeywordThread extends Thread
 			WebDriver webDriver = new ChromeDriver(chromeOptions);
 
 			String searchURLBase = "https://twitter.com/search?f=images&vertical=default&q=";
-			dateCounter.addTotalDate(dateLimit);
+			dateCounter.addTotalDate(DAYS.between(sinceDate , untilDate));
 
-			for(int i = 0; i < dateLimit; ++i)
+			while(GreatTwitterDownloader.isActive && !currentDate.isBefore(sinceDate))
 			{
-				System.out.println(simpleDateFormatFilename.format(calendar.getTime()));
+				System.out.println(currentDate.format(dateTimeFormatFilename));
 
 				int currentSize , lastSize = 0;
 				int trueTotalSize;
 				int currentPageNumber = 1;
-				String untilDate;
+				String untilDateStr;
 
 				String searchURL;
 
-				untilDate = simpleDateFormatFilename.format(calendar.getTime());
-				searchURL = " until:" + simpleDateFormat.format(calendar.getTime());
-				calendar.add(Calendar.DATE , -1);
-				searchURL = " since:" + simpleDateFormat.format(calendar.getTime()) + searchURL;
+				untilDateStr = currentDate.format(dateTimeFormatFilename);
+				searchURL = " until:" + currentDate.format(dateTimeFormat);
+				currentDate = currentDate.minusDays(1);
+				searchURL = " since:" + currentDate.format(dateTimeFormat) + searchURL;
 
 				searchURL = searchKeyword + searchURL;
 				searchURL = searchURLBase + URLEncoder.encode(searchURL , "UTF-8");
@@ -97,7 +105,7 @@ public class DownloadWithKeywordThread extends Thread
 						for (int currentDownloadIndex = lastSize; currentDownloadIndex < currentSize; ++currentDownloadIndex)
 						{
 							String imageUrl = imageElementList.get(currentDownloadIndex).getAttribute("src");
-							String imageFilename = searchKeyword + "/" + untilDate + "_" + StringUtils.leftPad("" + currentPageNumber++, 2, "0");
+							String imageFilename = "Download/" + searchKeyword + "/" + untilDateStr + "_" + StringUtils.leftPad("" + currentPageNumber++, 2, "0");
 							downloadQueue.pushToQueue(new ImageInfo(imageUrl , imageFilename));
 						}
 
@@ -107,10 +115,7 @@ public class DownloadWithKeywordThread extends Thread
 					{
 						Thread.sleep(1000);
 						if(!(searchResult.get(0).findElements(By.className("AdaptiveStreamGridImage")).size() > trueTotalSize))
-						{
-							System.out.println("Parse End");
 							break;
-						}
 					}
 				}
 

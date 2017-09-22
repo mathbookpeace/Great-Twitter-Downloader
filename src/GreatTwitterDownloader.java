@@ -1,6 +1,8 @@
 import javafx.beans.property.SimpleDoubleProperty;
 import org.apache.commons.lang3.SystemUtils;
 
+import java.time.LocalDate;
+
 /**
  * Created by mathbookpeace on 2017/9/13.
  */
@@ -10,7 +12,7 @@ public class GreatTwitterDownloader
 {
 	private DownloadQueue downloadQueue;
 	private DateCounter dateCounter;
-	private SimpleDoubleProperty simpleDoubleProperty;
+	static public boolean isActive = true;
 
 	public GreatTwitterDownloader()
 	{
@@ -21,10 +23,11 @@ public class GreatTwitterDownloader
 		else
 			return;
 
+		// one download queue and one manager to handle the download request from web parser.
 		downloadQueue  = new DownloadQueue();
 
+
 		DownloadThreadManager downloadThreadManager = new DownloadThreadManager(downloadQueue);
-		downloadThreadManager.setDaemon(true);
 		downloadThreadManager.start();
 
 		dateCounter = new DateCounter();
@@ -37,11 +40,24 @@ public class GreatTwitterDownloader
 	}
 
 
-	public void DownloaderWithKeyword(String searchKeyword)
+	public void Dispose()
 	{
-		DownloadWithKeywordThread downloadWithKeywordThread = new DownloadWithKeywordThread(searchKeyword , downloadQueue , dateCounter);
-		downloadWithKeywordThread.setDaemon(true);
-		downloadWithKeywordThread.start();
+		isActive = false;
+	}
+
+
+	public void DownloaderWithKeyword(String searchKeyword , LocalDate sinceDate , LocalDate untilDate)
+	{
+		if(untilDate == null)
+			untilDate = LocalDate.now();
+		if(sinceDate == null)
+			sinceDate = untilDate.plusDays(-1);
+		if(!untilDate.isAfter(sinceDate))
+			return;
+
+		// parse the twitter website and put the images data into download queue.
+		DownloadWithKeywordParser downloadWithKeywordParser = new DownloadWithKeywordParser(searchKeyword , sinceDate , untilDate , downloadQueue , dateCounter);
+		downloadWithKeywordParser.start();
 	}
 
 
