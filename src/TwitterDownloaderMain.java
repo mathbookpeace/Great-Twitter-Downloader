@@ -46,7 +46,7 @@ public class TwitterDownloaderMain extends Application
 		// date
 		DatePicker sinceDatePicker = new DatePicker();
 		sinceDatePicker.setPrefSize(210 , 20);
-		sinceDatePicker.setValue(LocalDate.now().minusDays(1));
+		sinceDatePicker.setValue(LocalDate.now());
 
 		DatePicker untilDatePicker = new DatePicker();
 		untilDatePicker.setPrefSize(209 , 20);

@@ -50,6 +50,8 @@ public class GreatTwitterDownloader
 	{
 		if(untilDate == null)
 			untilDate = LocalDate.now();
+		untilDate.plusDays(1);
+
 		if(sinceDate == null)
 			sinceDate = untilDate.plusDays(-1);
 		if(!untilDate.isAfter(sinceDate))

@@ -48,10 +48,9 @@ public class DownloadWithKeywordParser extends Thread
 		if(!folder.exists())
 			folder.mkdir();
 
-		folder = new File("Download/" + searchKeyword.replace("\\/><:\"|?*" , "A"));
+		folder = new File("Download/" + searchKeyword.replaceAll("[\\\\/><:\"|?*]" , "_"));
 		if(!folder.exists())
 			folder.mkdir();
-
 
 		try
 		{
@@ -59,7 +58,7 @@ public class DownloadWithKeywordParser extends Thread
 			chromeOptions.addArguments("--headless");
 			WebDriver webDriver = new ChromeDriver(chromeOptions);
 
-			String searchURLBase = "https://twitter.com/search?f=images&vertical=default&q=";
+			String searchURLBase = "https://twitter.com/search?q=";
 			dateCounter.addTotalDate(DAYS.between(sinceDate , untilDate));
 
 			while(GreatTwitterDownloader.isActive && !currentDate.isBefore(sinceDate))
@@ -67,7 +66,6 @@ public class DownloadWithKeywordParser extends Thread
 				System.out.println(currentDate.format(dateTimeFormatFilename));
 
 				int currentSize , lastSize = 0;
-				int trueTotalSize;
 				int currentPageNumber = 1;
 				String untilDateStr;
 
@@ -77,12 +75,14 @@ public class DownloadWithKeywordParser extends Thread
 				searchURL = " until:" + currentDate.format(dateTimeFormat);
 				currentDate = currentDate.minusDays(1);
 				searchURL = " since:" + currentDate.format(dateTimeFormat) + searchURL;
+				searchURL = " filter:images" + searchURL;
 
 				searchURL = searchKeyword + searchURL;
 				searchURL = searchURLBase + URLEncoder.encode(searchURL , "UTF-8");
 
 				webDriver.get(searchURL);
 				List<WebElement> searchResult = webDriver.findElements(By.className("stream"));
+
 
 				if(searchResult.size() == 0)
 				{
@@ -95,26 +95,25 @@ public class DownloadWithKeywordParser extends Thread
 					((JavascriptExecutor) webDriver).executeScript("window.scrollTo(0, document.body.scrollHeight)");
 					Thread.sleep(100);
 
-					List<WebElement> imageElementList = searchResult.get(0).findElements(By.tagName("img"));
+					List<WebElement> imageElementList = searchResult.get(0).findElements(By.className("AdaptiveMedia-photoContainer"));
 					currentSize = imageElementList.size();
-
-					trueTotalSize = searchResult.get(0).findElements(By.className("AdaptiveStreamGridImage")).size();
 
 					if (currentSize > lastSize)
 					{
 						for (int currentDownloadIndex = lastSize; currentDownloadIndex < currentSize; ++currentDownloadIndex)
 						{
-							String imageUrl = imageElementList.get(currentDownloadIndex).getAttribute("src");
-							String imageFilename = "Download/" + searchKeyword + "/" + untilDateStr + "_" + StringUtils.leftPad("" + currentPageNumber++, 2, "0");
+							String imageUrl = imageElementList.get(currentDownloadIndex).getAttribute("data-image-url");
+							String imageFilename = "Download/" + searchKeyword.replaceAll("[\\\\/><:\"|?*]" , "_") + "/" + untilDateStr + "_" + StringUtils.leftPad("" + currentPageNumber++, 2, "0");
+
 							downloadQueue.pushToQueue(new ImageInfo(imageUrl , imageFilename));
 						}
 
 						lastSize = currentSize;
 					}
-					else if (trueTotalSize <= lastSize)
+					else
 					{
-						Thread.sleep(1000);
-						if(!(searchResult.get(0).findElements(By.className("AdaptiveStreamGridImage")).size() > trueTotalSize))
+						Thread.sleep(2000);
+						if(searchResult.get(0).findElements(By.className("AdaptiveMedia-photoContainer")).size() <= lastSize)
 							break;
 					}
 				}
