@@ -2,6 +2,7 @@
  * Created by mathbookpeace on 2017/9/20.
  */
 
+import org.apache.bcel.generic.DUP;
 import org.apache.commons.lang3.StringUtils;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
@@ -21,20 +22,27 @@ import static java.time.temporal.ChronoUnit.DAYS;
 
 public class DownloadWithKeywordParser extends Thread
 {
+	private static byte parserIndexStatic = 0;
+	public static DateCounter dateCounter = new DateCounter();
+
+	private byte parserIndex;
 	private String searchKeyword;
 	private DownloadQueue downloadQueue;
-	DateCounter dateCounter;
-	LocalDate sinceDate = null , untilDate = null;
+	private DuplicatedImageChecker duplicatedImageChecker;
+	private LocalDate sinceDate , untilDate;
 
 //----------------------------------------------------------------------------------------------------------------------------------------
 
-	public DownloadWithKeywordParser(String searchKeyword , LocalDate sinceDate , LocalDate untilDate , DownloadQueue downloadQueue , DateCounter dateCounter)
+	public DownloadWithKeywordParser(String searchKeyword , LocalDate sinceDate , LocalDate untilDate)
 	{
 		this.searchKeyword = searchKeyword;
-		this.downloadQueue = downloadQueue;
-		this.dateCounter = dateCounter;
 		this.sinceDate = sinceDate;
 		this.untilDate = untilDate;
+
+		downloadQueue = DownloadQueue.getInstance();
+		duplicatedImageChecker = DuplicatedImageChecker.getInstance();
+
+		parserIndex = parserIndexStatic++;
 	}
 
 
@@ -51,6 +59,11 @@ public class DownloadWithKeywordParser extends Thread
 		folder = new File("Download/" + searchKeyword.replaceAll("[\\\\/><:\"|?*]" , "_"));
 		if(!folder.exists())
 			folder.mkdir();
+
+		for (File existFile : folder.listFiles())
+			if (duplicatedImageChecker.isExistImage(existFile , parserIndex))
+				existFile.delete();
+
 
 		try
 		{
@@ -105,7 +118,7 @@ public class DownloadWithKeywordParser extends Thread
 							String imageUrl = imageElementList.get(currentDownloadIndex).getAttribute("data-image-url");
 							String imageFilename = "Download/" + searchKeyword.replaceAll("[\\\\/><:\"|?*]" , "_") + "/" + untilDateStr + "_" + StringUtils.leftPad("" + currentPageNumber++, 2, "0");
 
-							downloadQueue.pushToQueue(new ImageInfo(imageUrl , imageFilename));
+							downloadQueue.pushToQueue(new ImageInfo(imageUrl , imageFilename , parserIndex));
 						}
 
 						lastSize = currentSize;

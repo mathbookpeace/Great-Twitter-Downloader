@@ -10,5 +10,6 @@
     <orderEntry type="library" name="jsoup-1.10.2" level="project" />
     <orderEntry type="library" name="client-combined-3.4.0-nodeps" level="project" />
     <orderEntry type="library" name="commons-lang3-3.5" level="project" />
+    <orderEntry type="library" name="log4j-core-2.9.1" level="project" />
   </component>
 </module>

@@ -5,19 +5,24 @@ import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+//import org.apache.logging.log4j.LogManager;
+//import org.apache.logging.log4j.Logger;
+//import org.apache.log4j.PropertyConfigurator;
 
 import java.time.LocalDate;
-
 
 /**
  * Created by mathbookpeace on 2017/9/13.
  */
 public class TwitterDownloaderMain extends Application
 {
+//	final static Logger logger = LogManager.getRootLogger();
 	private GreatTwitterDownloader greatTwitterDownloader;
 
 	public static void main (String[] args)
 	{
+//		PropertyConfigurator.configure("log4j.properties");
+//		logger.info("Program Start !");
 		launch(args);
 	}
 
@@ -30,7 +35,7 @@ public class TwitterDownloaderMain extends Application
 		primaryStage.setTitle("Great Twitter Downloader !");
 
 		SimpleDoubleProperty simpleDoubleProperty = new SimpleDoubleProperty();
-		greatTwitterDownloader.SetSimpleDoubleProperty(simpleDoubleProperty);
+		greatTwitterDownloader.setSimpleDoubleProperty(simpleDoubleProperty);
 
 
 		// progress
@@ -68,7 +73,7 @@ public class TwitterDownloaderMain extends Application
 					if(!searchKeyword.isEmpty())
 					{
 						urlTextField.setText("");
-						greatTwitterDownloader.DownloaderWithKeyword(searchKeyword , sinceDate , untilDate);
+						greatTwitterDownloader.downloaderWithKeyword(searchKeyword , sinceDate , untilDate);
 					}
 				}
 		);
@@ -109,6 +114,6 @@ public class TwitterDownloaderMain extends Application
 	public void stop()
 	{
 		System.out.println("Terminate");
-		greatTwitterDownloader.Dispose();
+		greatTwitterDownloader.dispose();
 	}
 }

@@ -11,15 +11,20 @@ import java.net.URLConnection;
  */
 public class DownloadThread extends Thread
 {
-	ImageInfo fileData;
-	ThreadCounter threadCounter;
+	ImageInfo imageInfo;
+	private DuplicatedImageChecker duplicatedImageChecker;
+	private ThreadCounter threadCounter;
 
 	final int downloadTimeout = 30000;
 
-	public DownloadThread(ImageInfo fileData , ThreadCounter threadCounter)
+	public DownloadThread(ImageInfo imageInfo)
 	{
-		this.fileData = fileData;
-		this.threadCounter = threadCounter;
+		this.imageInfo = imageInfo;
+
+		duplicatedImageChecker = DuplicatedImageChecker.getInstance();
+		threadCounter = ThreadCounter.getInstance();
+
+		threadCounter.updateThreadCount(1);
 	}
 
 
@@ -27,9 +32,9 @@ public class DownloadThread extends Thread
 	{
 		try
 		{
-			String extension = fileData.url.substring( fileData.url.lastIndexOf(".") + 1 );
-			String filename = fileData.filename + "." + extension;
-			filename = filename.replace("\\/><:\"|?*" , "A");
+			String extension = imageInfo.url.substring( imageInfo.url.lastIndexOf(".") + 1 );
+			String filename = imageInfo.filename + "." + extension;
+			filename = filename.replace("[\\\\/><:\"|?*]" , "A");
 
 			while(new File(filename).exists())
 			{
@@ -37,14 +42,19 @@ public class DownloadThread extends Thread
 				System.out.println("Duplicated Filename !");
 			}
 
-			URL url = new URL(fileData.url);
+			URL url = new URL(imageInfo.url);
 
 			URLConnection urlConnection = url.openConnection();
 			urlConnection.setConnectTimeout(downloadTimeout);
 			urlConnection.setReadTimeout(downloadTimeout);
 
+			File downloadFile = new File(filename);
+
 			BufferedImage bufferedImage = ImageIO.read(urlConnection.getInputStream());
-			ImageIO.write(bufferedImage, extension, new File(filename));
+			ImageIO.write(bufferedImage, extension , downloadFile);
+
+			if (duplicatedImageChecker.isExistImage(downloadFile , imageInfo.parserIndex))
+				downloadFile.delete();
 
 			threadCounter.updateThreadCount(-1);
 		}

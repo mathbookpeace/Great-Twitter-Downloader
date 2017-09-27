@@ -6,14 +6,23 @@ import javafx.beans.property.SimpleDoubleProperty;
 
 public class ThreadCounter
 {
+	private static ThreadCounter instance = null;
+
 	private final int threadLimit = 40;
 	private int threadCount = 0;
 
 	private final Object lockForThreadCounter;
 
-	public ThreadCounter ()
+	private ThreadCounter ()
 	{
 		lockForThreadCounter = new Object();
+	}
+
+	public synchronized static ThreadCounter getInstance()
+	{
+		if(instance == null)
+			instance = new ThreadCounter();
+		return instance;
 	}
 
 	public void updateThreadCount(int addThreadCount)

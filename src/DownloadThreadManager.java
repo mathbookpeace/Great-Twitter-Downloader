@@ -5,10 +5,10 @@ public class DownloadThreadManager extends Thread
 
 //----------------------------------------------------------------------------------------------------------------------------------------
 
-	public DownloadThreadManager(DownloadQueue downloadQueue)
+	public DownloadThreadManager()
 	{
-		this.downloadQueue = downloadQueue;
-		threadCounter = new ThreadCounter();
+		this.downloadQueue = DownloadQueue.getInstance();
+		threadCounter = ThreadCounter.getInstance();
 	}
 
 
@@ -18,18 +18,14 @@ public class DownloadThreadManager extends Thread
 		{
 			while(GreatTwitterDownloader.isActive || downloadQueue.size() > 0)
 			{
-				if(downloadQueue.size() > 0)
-				{
-					while(threadCounter.isReachedLimit())
-						Thread.sleep(500);
-
-					threadCounter.updateThreadCount(1);
-					new DownloadThread(downloadQueue.pollFromQueue() , threadCounter).start();
-
-					Thread.sleep(40);
-				}
-				else
+				if (downloadQueue.size() <= 0)
 					Thread.sleep(500);
+				else
+				{
+					while (threadCounter.isReachedLimit())
+						Thread.sleep(500);
+					new DownloadThread(downloadQueue.pollFromQueue()).start();
+				}
 			}
 		}
 		catch (InterruptedException e) { e.printStackTrace(); }

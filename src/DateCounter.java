@@ -13,7 +13,7 @@ public class DateCounter
 		lockForProgress = new Object();
 	}
 
-	public void SetSimpleDoubleProperty(SimpleDoubleProperty simpleDoubleProperty)
+	public void setSimpleDoubleProperty(SimpleDoubleProperty simpleDoubleProperty)
 	{
 		this.simpleDoubleProperty = simpleDoubleProperty;
 	}

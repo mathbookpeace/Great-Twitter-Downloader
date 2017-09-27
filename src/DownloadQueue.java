@@ -4,15 +4,26 @@ import java.util.Queue;
 
 public class DownloadQueue
 {
+	private static DownloadQueue instance = null;
+
 	private final Object lockForQueue;
 	private Queue <ImageInfo> downloadQueue;
 
 
-	public DownloadQueue()
+	private DownloadQueue()
 	{
 		lockForQueue = new Object();
 		downloadQueue = new LinkedList();
 	}
+
+
+	public synchronized static DownloadQueue getInstance()
+	{
+		if (instance == null)
+			instance = new DownloadQueue();
+		return instance;
+	}
+
 
 	public int size() { return downloadQueue.size(); }
 

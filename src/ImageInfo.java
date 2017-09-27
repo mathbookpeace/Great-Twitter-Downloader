@@ -6,10 +6,12 @@ public class ImageInfo
 {
 	String url;
 	String filename;
+	byte parserIndex;
 
-	public ImageInfo(String url , String filename)
+	public ImageInfo(String url , String filename , byte parserIndex)
 	{
 		this.url = url;
 		this.filename = filename;
+		this.parserIndex = parserIndex;
 	}
 }
