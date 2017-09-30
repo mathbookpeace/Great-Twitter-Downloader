@@ -1,7 +1,8 @@
+import jdk.internal.util.xml.impl.Input;
+
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -9,13 +10,13 @@ import java.net.URLConnection;
 /**
  * Created by mathbookpeace on 2017/9/20.
  */
-public class DownloadThread extends Thread
+class DownloadThread extends Thread
 {
-	ImageInfo imageInfo;
+	private ImageInfo imageInfo;
 	private DuplicatedImageChecker duplicatedImageChecker;
 	private ThreadCounter threadCounter;
 
-	final int downloadTimeout = 30000;
+	private final int downloadTimeout = 30000;
 
 	public DownloadThread(ImageInfo imageInfo)
 	{
@@ -50,15 +51,21 @@ public class DownloadThread extends Thread
 
 			File downloadFile = new File(filename);
 
-			BufferedImage bufferedImage = ImageIO.read(urlConnection.getInputStream());
-			ImageIO.write(bufferedImage, extension , downloadFile);
+			InputStream inputStream = urlConnection.getInputStream();
+			FileOutputStream fileOutputStream = new FileOutputStream(downloadFile);
+
+			byte[] fileByte = new byte[1];
+			while (inputStream.read(fileByte) != -1)
+				fileOutputStream.write(fileByte);
+
+			inputStream.close();
+			fileOutputStream.close();
 
 			if (duplicatedImageChecker.isExistImage(downloadFile , imageInfo.parserIndex))
 				downloadFile.delete();
 
 			threadCounter.updateThreadCount(-1);
 		}
-		catch (MalformedURLException e) { e.printStackTrace(); }
 		catch (IOException e) { e.printStackTrace(); }
 	}
 }

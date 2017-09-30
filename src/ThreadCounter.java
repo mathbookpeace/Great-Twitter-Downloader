@@ -1,5 +1,3 @@
-import javafx.beans.property.SimpleDoubleProperty;
-
 /**
  * Created by mathbookpeace on 2017/9/20.
  */

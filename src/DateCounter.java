@@ -2,16 +2,27 @@ import javafx.beans.property.SimpleDoubleProperty;
 
 public class DateCounter
 {
+	private static DateCounter instance = null;
+
 	private double totalDate = 0;
 	private double completedDate = 0;
 
 	private final Object lockForProgress;
 	private SimpleDoubleProperty simpleDoubleProperty = null;
 
-	public DateCounter()
+	private DateCounter()
 	{
 		lockForProgress = new Object();
 	}
+
+	public synchronized static DateCounter getInstance ()
+	{
+		if (instance == null)
+			instance = new DateCounter();
+		return instance;
+	}
+
+
 
 	public void setSimpleDoubleProperty(SimpleDoubleProperty simpleDoubleProperty)
 	{

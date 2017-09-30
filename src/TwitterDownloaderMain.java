@@ -19,6 +19,7 @@ public class TwitterDownloaderMain extends Application
 //	final static Logger logger = LogManager.getRootLogger();
 	private GreatTwitterDownloader greatTwitterDownloader;
 
+
 	public static void main (String[] args)
 	{
 //		PropertyConfigurator.configure("log4j.properties");

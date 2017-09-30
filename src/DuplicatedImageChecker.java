@@ -10,8 +10,8 @@ public class DuplicatedImageChecker
 {
 	private static DuplicatedImageChecker instance = null;
 
-	HashMap <Long , List<File>> imageList;
-	final Object listLock;
+	private HashMap <Long , List<File>> imageList;
+	private final Object listLock;
 
 
 	private DuplicatedImageChecker()
@@ -46,7 +46,7 @@ public class DuplicatedImageChecker
 			}
 			else
 			{
-				imageList.put(binaryCode, new ArrayList<File>());
+				imageList.put(binaryCode, new ArrayList());
 				imageList.get(binaryCode).add(file);
 				return false;
 			}
@@ -54,7 +54,7 @@ public class DuplicatedImageChecker
 	}
 
 
-	public boolean compareImagesBinary(File file1 , File file2)
+	private boolean compareImagesBinary(File file1, File file2)
 	{
 		try
 		{
@@ -75,13 +75,12 @@ public class DuplicatedImageChecker
 			bufferedReader1.close();
 			bufferedReader2.close();
 		}
-		catch (FileNotFoundException e) { e.printStackTrace(); }
 		catch (IOException e) { e.printStackTrace(); }
 
 		return true;
 	}
 
-	public long getBinaryCode(File file)
+	private long getBinaryCode(File file)
 	{
 		if(!file.exists())
 			return -1;
@@ -100,7 +99,6 @@ public class DuplicatedImageChecker
 			return result;
 
 		}
-		catch (FileNotFoundException e) { e.printStackTrace(); }
 		catch (IOException e) { e.printStackTrace(); }
 
 		return -1;

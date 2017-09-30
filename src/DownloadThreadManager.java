@@ -1,7 +1,7 @@
-public class DownloadThreadManager extends Thread
+class DownloadThreadManager extends Thread
 {
-	DownloadQueue downloadQueue;
-	ThreadCounter threadCounter;
+	private DownloadQueue downloadQueue;
+	private ThreadCounter threadCounter;
 
 //----------------------------------------------------------------------------------------------------------------------------------------
 

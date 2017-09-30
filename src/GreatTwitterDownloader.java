@@ -8,9 +8,10 @@ import java.time.LocalDate;
  */
 
 
-public class GreatTwitterDownloader
+class GreatTwitterDownloader
 {
 	public static boolean isActive = true;
+	public boolean isFirstRequest = true;
 
 	public GreatTwitterDownloader()
 	{
@@ -21,15 +22,13 @@ public class GreatTwitterDownloader
 		else
 			return;
 
-		// one download queue and one manager to handle the download request from web parser.
-		DownloadThreadManager downloadThreadManager = new DownloadThreadManager();
-		downloadThreadManager.start();
+		login();
 	}
 
 
 	public void setSimpleDoubleProperty(SimpleDoubleProperty simpleDoubleProperty)
 	{
-		DownloadWithKeywordParser.dateCounter.setSimpleDoubleProperty(simpleDoubleProperty);
+		DateCounter.getInstance().setSimpleDoubleProperty(simpleDoubleProperty);
 	}
 
 
@@ -38,6 +37,13 @@ public class GreatTwitterDownloader
 		isActive = false;
 	}
 
+
+
+	public void login()
+	{
+		LoginTwitter loginTwitter = new LoginTwitter();
+		loginTwitter.start();
+	}
 
 	public void downloaderWithKeyword(String searchKeyword , LocalDate sinceDate , LocalDate untilDate)
 	{
@@ -50,11 +56,21 @@ public class GreatTwitterDownloader
 		if(!untilDate.isAfter(sinceDate))
 			return;
 
+
+		if (isFirstRequest)
+		{
+			// the WebParserManager just maintain the WebParser thread pool
+			WebParserManager webParserManager = new WebParserManager();
+			webParserManager.start();
+			isFirstRequest = false;
+
+			// one download queue and one manager to handle the download request from web parser.
+			DownloadThreadManager downloadThreadManager = new DownloadThreadManager();
+			downloadThreadManager.start();
+		}
+
 		// parse the twitter website and put the images data into download queue.
-		DownloadWithKeywordParser downloadWithKeywordParser = new DownloadWithKeywordParser(searchKeyword , sinceDate , untilDate);
-		downloadWithKeywordParser.start();
+		UrlGenerator urlGenerator = new UrlGenerator(searchKeyword , sinceDate , untilDate);
+		urlGenerator.start();
 	}
-
-
-
 }

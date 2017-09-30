@@ -36,7 +36,7 @@ public class DownloadQueue
 		}
 	}
 
-	public void pushToQueue(ImageInfo imageInfo)
+	public void add(ImageInfo imageInfo)
 	{
 		synchronized (lockForQueue)
 		{
