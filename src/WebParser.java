@@ -6,30 +6,29 @@ import org.apache.commons.lang3.StringUtils;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.util.List;
 
 class WebParser extends Thread
 {
 
-	private static DateCounter dateCounter;
-	private DownloadQueue downloadQueue;
-	private TwitterUrlQueue twitterUrlQueue;
+	private static DateCounter dateCounter = DateCounter.getInstance();;
+	private static DownloadQueue downloadQueue = DownloadQueue.getInstance();
+	private static TwitterUrlQueue twitterUrlQueue = TwitterUrlQueue.getInstance();
 
 	private WebDriver webDriver;
+	private static Object waitKey = new Object();
 
 //----------------------------------------------------------------------------------------------------------------------------------------
 
 	public WebParser()
 	{
-		downloadQueue = DownloadQueue.getInstance();
-		dateCounter = DateCounter.getInstance();
-		twitterUrlQueue = TwitterUrlQueue.getInstance();
-
 		ChromeOptions chromeOptions = new ChromeOptions();
 		chromeOptions.addArguments("--headless");
 
-		// neet to set header
+		// need to set header
 		webDriver = new ChromeDriver(chromeOptions);
 		webDriver.get("https://twitter.com/search-home");
 		for (Cookie cookie : LoginTwitter.twitterCookie)
@@ -37,55 +36,50 @@ class WebParser extends Thread
 	}
 
 
+	private void waitForTask() throws InterruptedException
+	{
+		synchronized (waitKey) { waitKey.wait(); }
+	}
+
+	public static void notifyAllForTask()
+	{
+		synchronized (waitKey) { waitKey.notifyAll(); }
+	}
+
+
+
+	//-------------------------------------------------------------------------------------------------------------------
+
 	public void run()
 	{
 		try
 		{
+			WebDriverWait waitForLogin = new WebDriverWait(webDriver , 60000);
+
 			while(GreatTwitterDownloader.isActive)
 			{
 				int currentSize , lastSize = 0 , currentPageNumber = 1;
 
-				ImageInfo imageInfo;
-				while ( (imageInfo = twitterUrlQueue.poll()) == null)
-				{
-					if (GreatTwitterDownloader.isActive)
-						Thread.sleep(5000);
-					else
-					{
-						System.out.println("Download completed !");
-						webDriver.quit();
-						return;
-					}
-				}
+				ImageInfo imageInfo = null;
+				while (GreatTwitterDownloader.isActive && (imageInfo = twitterUrlQueue.poll()) == null)
+					waitForTask();
+				if (!GreatTwitterDownloader.isActive)
+					break;
+
+				dateCounter.increaseCompletedDateBy1();
 
 				webDriver.get("https://twitter.com/search-home");
 				while (webDriver.findElements(By.id("search-home-input")).size() == 0);
 				webDriver.findElement(By.id("search-home-input")).sendKeys(imageInfo.url + Keys.ENTER);
 
+				waitForLogin.until(ExpectedConditions.presenceOfElementLocated(By.className("AppContainer")));
 
-				boolean isFoundTimeline;
-				while (true)
-				{
-					if(webDriver.findElements(By.id("timeline")).size() != 0)
-					{
-						isFoundTimeline = true;
-						break;
-					}
-
-					if (webDriver.findElements(By.className("SearchEmptyTimeline")).size() != 0)
-					{
-						isFoundTimeline = false;
-						dateCounter.increaseCompletedDateBy1();
-						break;
-					}
-					Thread.sleep(2000);
-				}
-
-				if(!isFoundTimeline)
+				if (webDriver.findElements(By.className("SearchEmptyTimeline")).size() != 0)
 				{
 					dateCounter.increaseCompletedDateBy1();
 					continue;
 				}
+
 
 				List<WebElement> searchResult = webDriver.findElements(By.className("stream"));
 
@@ -105,6 +99,7 @@ class WebParser extends Thread
 							String imageFilename = imageInfo.filename + "_" + StringUtils.leftPad("" + currentPageNumber++, 2, "0");
 
 							downloadQueue.add(new ImageInfo(imageUrl , imageFilename , imageInfo.parserIndex));
+							DownloadThread.notifyForTask();
 						}
 
 						lastSize = currentSize;
@@ -116,8 +111,6 @@ class WebParser extends Thread
 							break;
 					}
 				}
-
-				dateCounter.increaseCompletedDateBy1();
 			}
 
 			System.out.println("Download completed !");

@@ -1,9 +1,7 @@
-import jdk.internal.util.xml.impl.Input;
-
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.*;
-import java.net.MalformedURLException;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
 
@@ -12,60 +10,81 @@ import java.net.URLConnection;
  */
 class DownloadThread extends Thread
 {
-	private ImageInfo imageInfo;
-	private DuplicatedImageChecker duplicatedImageChecker;
-	private ThreadCounter threadCounter;
+	private DuplicatedImageChecker duplicatedImageChecker = DuplicatedImageChecker.getInstance();
+	private static DownloadQueue downloadQueue = DownloadQueue.getInstance();
 
 	private final int downloadTimeout = 30000;
+	private static Object waitKey = new Object();
 
-	public DownloadThread(ImageInfo imageInfo)
+
+	public DownloadThread()
 	{
-		this.imageInfo = imageInfo;
-
-		duplicatedImageChecker = DuplicatedImageChecker.getInstance();
-		threadCounter = ThreadCounter.getInstance();
-
-		threadCounter.updateThreadCount(1);
 	}
+
+
+
+	private void waitForTask() throws InterruptedException
+	{
+		synchronized (waitKey) { waitKey.wait(); }
+	}
+
+	public static void notifyForTask()
+	{
+		synchronized (waitKey) { waitKey.notify(); }
+	}
+	public static void notifyAllForTask()
+	{
+		synchronized (waitKey) { waitKey.notifyAll(); }
+	}
+
 
 
 	public void run()
 	{
 		try
 		{
-			String extension = imageInfo.url.substring( imageInfo.url.lastIndexOf(".") + 1 );
-			String filename = imageInfo.filename + "." + extension;
-			filename = filename.replace("[\\\\/><:\"|?*]" , "A");
+			ImageInfo imageInfo = null;
 
-			while(new File(filename).exists())
+			while (GreatTwitterDownloader.isActive)
 			{
-				filename = filename.substring(0 , filename.lastIndexOf('.')) + "A" + filename.substring(filename.lastIndexOf('.'));
-				System.out.println("Duplicated Filename !");
+				while (GreatTwitterDownloader.isActive && (imageInfo = downloadQueue.pollFromQueue()) == null)
+					waitForTask();
+				if (!GreatTwitterDownloader.isActive)
+					break;
+
+				String extension = imageInfo.url.substring(imageInfo.url.lastIndexOf(".") + 1);
+				String filename = imageInfo.filename + "." + extension;
+				filename = filename.replace("[\\\\/><:\"|?*]", "A");
+
+				while (new File(filename).exists())
+				{
+					filename = filename.substring(0, filename.lastIndexOf('.')) + "A" + filename.substring(filename.lastIndexOf('.'));
+					System.out.println("Duplicated Filename !");
+				}
+
+				URL url = new URL(imageInfo.url);
+
+				URLConnection urlConnection = url.openConnection();
+				urlConnection.setConnectTimeout(downloadTimeout);
+				urlConnection.setReadTimeout(downloadTimeout);
+
+				File downloadFile = new File(filename);
+
+				InputStream inputStream = urlConnection.getInputStream();
+				FileOutputStream fileOutputStream = new FileOutputStream(downloadFile);
+
+				byte[] fileByte = new byte[1];
+				while (inputStream.read(fileByte) != -1)
+					fileOutputStream.write(fileByte);
+
+				inputStream.close();
+				fileOutputStream.close();
+
+				if (duplicatedImageChecker.isExistImage(downloadFile, imageInfo.parserIndex))
+					downloadFile.delete();
 			}
-
-			URL url = new URL(imageInfo.url);
-
-			URLConnection urlConnection = url.openConnection();
-			urlConnection.setConnectTimeout(downloadTimeout);
-			urlConnection.setReadTimeout(downloadTimeout);
-
-			File downloadFile = new File(filename);
-
-			InputStream inputStream = urlConnection.getInputStream();
-			FileOutputStream fileOutputStream = new FileOutputStream(downloadFile);
-
-			byte[] fileByte = new byte[1];
-			while (inputStream.read(fileByte) != -1)
-				fileOutputStream.write(fileByte);
-
-			inputStream.close();
-			fileOutputStream.close();
-
-			if (duplicatedImageChecker.isExistImage(downloadFile , imageInfo.parserIndex))
-				downloadFile.delete();
-
-			threadCounter.updateThreadCount(-1);
 		}
 		catch (IOException e) { e.printStackTrace(); }
+		catch (InterruptedException e) { e.printStackTrace(); }
 	}
 }

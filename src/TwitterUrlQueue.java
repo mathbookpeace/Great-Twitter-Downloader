@@ -38,10 +38,7 @@ public class TwitterUrlQueue
 	{
 		synchronized (queueLock)
 		{
-			if (urlQueue.size() > 0)
-				return urlQueue.poll();
-			else
-				return null;
+			return urlQueue.poll();
 		}
 	}
 }

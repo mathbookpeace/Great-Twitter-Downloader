@@ -4,15 +4,18 @@
  */
 class WebParserManager extends Thread
 {
-	private final int NumberOfParser = 4;
+	private final int NumberOfParser = 20;
+	//private boolean isActive = true;
 
 	public WebParserManager ()
 	{
 	}
 
+	//public void dispose () { isActive = false; }
+
 	public void run ()
 	{
-		for(int i = 0 ; i < NumberOfParser ; ++i)
+		for(int i = 0 ; i < NumberOfParser && GreatTwitterDownloader.isActive ; ++i)
 		{
 			WebParser webParser = new WebParser();
 			webParser.start();

@@ -11,7 +11,10 @@ import java.time.LocalDate;
 class GreatTwitterDownloader
 {
 	public static boolean isActive = true;
-	public boolean isFirstRequest = true;
+	private boolean isFirstRequest = true;
+
+	WebParserManager webParserManager;
+	DownloadThreadManager downloadThreadManager;
 
 	public GreatTwitterDownloader()
 	{
@@ -35,6 +38,8 @@ class GreatTwitterDownloader
 	public void dispose()
 	{
 		isActive = false;
+		WebParser.notifyAllForTask();
+		DownloadThread.notifyAllForTask();
 	}
 
 
@@ -59,13 +64,14 @@ class GreatTwitterDownloader
 
 		if (isFirstRequest)
 		{
-			// the WebParserManager just maintain the WebParser thread pool
-			WebParserManager webParserManager = new WebParserManager();
-			webParserManager.start();
 			isFirstRequest = false;
 
+			// the WebParserManager just maintain the WebParser thread pool
+			webParserManager = new WebParserManager();
+			webParserManager.start();
+
 			// one download queue and one manager to handle the download request from web parser.
-			DownloadThreadManager downloadThreadManager = new DownloadThreadManager();
+			downloadThreadManager = new DownloadThreadManager();
 			downloadThreadManager.start();
 		}
 

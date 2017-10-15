@@ -1,6 +1,4 @@
 import java.io.File;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
@@ -40,44 +38,49 @@ class UrlGenerator extends Thread
 
 	public void run()
 	{
-//		try
-//		{
-			File folder = new File("Download");
-			if(!folder.exists())
-				folder.mkdir();
+		File folder = new File("Download");
+		if(!folder.exists())
+			folder.mkdir();
 
-			folder = new File("Download/" + searchKeyword.replaceAll("[\\\\/><:\"|?*]" , "_"));
-			if(!folder.exists())
-				folder.mkdir();
+		folder = new File("Download/" + searchKeyword.replaceAll("[\\\\/><:\"|?*]" , "_"));
+		if(!folder.exists())
+			folder.mkdir();
 
-			for (File existFile : folder.listFiles())
-				if (duplicatedImageChecker.isExistImage(existFile , parserIndex))
-					existFile.delete();
+		for (File existFile : folder.listFiles())
+			if (duplicatedImageChecker.isExistImage(existFile , parserIndex))
+				existFile.delete();
 
-			LocalDate currentDate = untilDate;
-			DateTimeFormatter dateTimeFormat = DateTimeFormatter.ofPattern("yyyy-M-d");
-			DateTimeFormatter dateTimeFormatFilename = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+		LocalDate currentDate = untilDate;
+		DateTimeFormatter dateTimeFormatFilename = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-			String searchURLBase = "https://twitter.com/search?q=";
+		while (GreatTwitterDownloader.isActive && !currentDate.isBefore(sinceDate))
+		{
+			String searchURL = getCurrentSearchWord(currentDate);
+			String untilDateStr = currentDate.minusDays(1).format(dateTimeFormatFilename);
+			String imageFilename = "Download/" + searchKeyword.replaceAll("[\\\\/><:\"|?*]" , "_") + "/" + untilDateStr;
 
-			while (GreatTwitterDownloader.isActive && !currentDate.isBefore(sinceDate))
-			{
-				String searchURL;
-				searchURL = " until:" + currentDate.format(dateTimeFormat);
-				currentDate = currentDate.minusDays(1);
-				searchURL = " since:" + currentDate.format(dateTimeFormat) + searchURL;
-				searchURL = " filter:images" + searchURL;
+			twitterUrlQueue.add(new ImageInfo(searchURL , imageFilename , parserIndex));
 
-				searchURL = searchKeyword + searchURL;
-//				searchURL = searchURLBase + URLEncoder.encode(searchURL, "UTF-8");
+			currentDate = currentDate.minusDays(1);
+		}
 
-				String untilDateStr = currentDate.format(dateTimeFormatFilename);
+		WebParser.notifyAllForTask();
+	}
 
-				String imageFilename = "Download/" + searchKeyword.replaceAll("[\\\\/><:\"|?*]" , "_") + "/" + untilDateStr;
-				twitterUrlQueue.add(new ImageInfo(searchURL , imageFilename , parserIndex));
-			}
 
-//		}
-//		catch (UnsupportedEncodingException e) { e.printStackTrace(); }
+
+	private String getCurrentSearchWord(LocalDate currentDate)
+	{
+		DateTimeFormatter dateTimeFormat = DateTimeFormatter.ofPattern("yyyy-M-d");
+
+		String searchURL;
+		searchURL = " until:" + currentDate.format(dateTimeFormat);
+		currentDate = currentDate.minusDays(1);
+		searchURL = " since:" + currentDate.format(dateTimeFormat) + searchURL;
+		searchURL = " filter:images" + searchURL;
+
+		searchURL = searchKeyword + searchURL;
+
+		return searchURL;
 	}
 }

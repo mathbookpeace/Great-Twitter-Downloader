@@ -2,6 +2,8 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.Cookie;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.util.Set;
 
@@ -20,7 +22,9 @@ class LoginTwitter extends Thread
 	{
 		WebDriver webDriver = new ChromeDriver();
 		webDriver.get("https://twitter.com/login");
-		while(webDriver.findElements(By.className("js-signout-button")).size() == 0);
+
+		WebDriverWait waitForLogin = new WebDriverWait(webDriver , 60000);
+		waitForLogin.until(ExpectedConditions.presenceOfElementLocated(By.className("js-signout-button")));
 
 		twitterCookie = webDriver.manage().getCookies();
 		webDriver.quit();
