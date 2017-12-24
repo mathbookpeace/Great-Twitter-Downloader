@@ -4,7 +4,7 @@
  */
 class WebParserManager extends Thread
 {
-	private final int NumberOfParser = 20;
+	private final int NumberOfParser = 1;
 	//private boolean isActive = true;
 
 	public WebParserManager ()

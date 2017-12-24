@@ -18,14 +18,6 @@ class GreatTwitterDownloader
 
 	public GreatTwitterDownloader()
 	{
-		if(SystemUtils.IS_OS_MAC)
-			System.setProperty("webdriver.chrome.driver" , "chromedriver");
-		else if(SystemUtils.IS_OS_WINDOWS)
-			System.setProperty("webdriver.chrome.driver" , "chromedriver.exe");
-		else
-			return;
-
-		login();
 	}
 
 
@@ -54,7 +46,7 @@ class GreatTwitterDownloader
 	{
 		if(untilDate == null)
 			untilDate = LocalDate.now();
-		untilDate.plusDays(1);
+		untilDate = untilDate.plusDays(1);
 
 		if(sinceDate == null)
 			sinceDate = untilDate.plusDays(-1);
@@ -76,7 +68,7 @@ class GreatTwitterDownloader
 		}
 
 		// parse the twitter website and put the images data into download queue.
-		UrlGenerator urlGenerator = new UrlGenerator(searchKeyword , sinceDate , untilDate);
-		urlGenerator.start();
+		TwitterUrlQueue twitterUrlQueue = TwitterUrlQueue.getInstance();
+		twitterUrlQueue.offer(searchKeyword , sinceDate , untilDate);
 	}
 }

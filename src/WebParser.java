@@ -3,36 +3,28 @@
  */
 
 import org.apache.commons.lang3.StringUtils;
+import org.jsoup.Jsoup;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
+import java.io.IOException;
 import java.util.List;
 
 class WebParser extends Thread
 {
 
-	private static DateCounter dateCounter = DateCounter.getInstance();;
 	private static DownloadQueue downloadQueue = DownloadQueue.getInstance();
 	private static TwitterUrlQueue twitterUrlQueue = TwitterUrlQueue.getInstance();
 
-	private WebDriver webDriver;
 	private static Object waitKey = new Object();
 
 //----------------------------------------------------------------------------------------------------------------------------------------
 
 	public WebParser()
 	{
-		ChromeOptions chromeOptions = new ChromeOptions();
-		chromeOptions.addArguments("--headless");
-
-		// need to set header
-		webDriver = new ChromeDriver(chromeOptions);
-		webDriver.get("https://twitter.com/search-home");
-		for (Cookie cookie : LoginTwitter.twitterCookie)
-			webDriver.manage().addCookie(cookie);
 	}
 
 
@@ -52,70 +44,145 @@ class WebParser extends Thread
 
 	public void run()
 	{
-		try
+		while(GreatTwitterDownloader.isActive)
 		{
-			WebDriverWait waitForLogin = new WebDriverWait(webDriver , 60000);
+			int currentPageNumber = 1;
+			boolean toBeContinue = false;
 
-			while(GreatTwitterDownloader.isActive)
+			ImageInfo imageInfo = null;
+			while (GreatTwitterDownloader.isActive && (imageInfo = twitterUrlQueue.poll()) == null)
+				try { waitForTask(); }    catch (InterruptedException e) { e.printStackTrace(); }
+			if (!GreatTwitterDownloader.isActive)
+				break;
+
+			System.out.println(imageInfo.keywordUTF8);
+
+			String firstConnectResult = null;
+			while(true)
 			{
-				int currentSize , lastSize = 0 , currentPageNumber = 1;
-
-				ImageInfo imageInfo = null;
-				while (GreatTwitterDownloader.isActive && (imageInfo = twitterUrlQueue.poll()) == null)
-					waitForTask();
-				if (!GreatTwitterDownloader.isActive)
+				try
+				{
+					firstConnectResult = Jsoup.connect(imageInfo.url)
+							.header("X-Push-State-Request" , "true")
+							.header("X-Asset-Version" , "ec23cf")
+							.header("X-Twitter-Active-Use" , "yes")
+							.header("X-Requested-With" , "XMLHttpRequest")
+							.header("Connection" , "keep-alive")
+							.get().text();
 					break;
-
-				dateCounter.increaseCompletedDateBy1();
-
-				webDriver.get("https://twitter.com/search-home");
-				while (webDriver.findElements(By.id("search-home-input")).size() == 0);
-				webDriver.findElement(By.id("search-home-input")).sendKeys(imageInfo.url + Keys.ENTER);
-
-				waitForLogin.until(ExpectedConditions.presenceOfElementLocated(By.className("AppContainer")));
-
-				if (webDriver.findElements(By.className("SearchEmptyTimeline")).size() != 0)
-				{
-					dateCounter.increaseCompletedDateBy1();
-					continue;
 				}
-
-
-				List<WebElement> searchResult = webDriver.findElements(By.className("stream"));
-
-				while (lastSize < 1000)
+				catch (IOException e)
 				{
-					((JavascriptExecutor) webDriver).executeScript("window.scrollTo(0, document.body.scrollHeight)");
-					Thread.sleep(2000);
-
-					List<WebElement> imageElementList = searchResult.get(0).findElements(By.className("AdaptiveMedia-photoContainer"));
-					currentSize = imageElementList.size();
-
-					if (currentSize > lastSize)
-					{
-						for (int currentDownloadIndex = lastSize; currentDownloadIndex < currentSize; ++currentDownloadIndex)
-						{
-							String imageUrl = imageElementList.get(currentDownloadIndex).getAttribute("data-image-url");
-							String imageFilename = imageInfo.filename + "_" + StringUtils.leftPad("" + currentPageNumber++, 2, "0");
-
-							downloadQueue.add(new ImageInfo(imageUrl , imageFilename , imageInfo.parserIndex));
-							DownloadThread.notifyForTask();
-						}
-
-						lastSize = currentSize;
-					}
-					else
-					{
-						Thread.sleep(4000);
-						if(searchResult.get(0).findElements(By.className("AdaptiveMedia-photoContainer")).size() <= lastSize)
-							break;
-					}
+					System.out.println("Jsoup connect error 60: " + imageInfo.url);
+					try { Thread.sleep(5000); }    catch (InterruptedException e1) { e1.printStackTrace(); }
 				}
 			}
 
-			System.out.println("Download completed !");
-			webDriver.quit();
+
+			TwitterJsonParser firstImageUrlParser = new TwitterJsonParser(firstConnectResult , "data-image-url");
+
+			String firstImageUrl;
+			while ( (firstImageUrl = firstImageUrlParser.getNext()) != null )
+			{
+				toBeContinue = true;
+
+				firstImageUrl = firstImageUrl.replaceAll("\\\\", "");
+				String firstImageFilename = imageInfo.filename + "_" + StringUtils.leftPad("" + currentPageNumber++, 2, "0");
+
+				downloadQueue.add(new ImageInfo(firstImageUrl, firstImageFilename, imageInfo.parserIndex));
+				DownloadThread.notifyForTask();
+			}
+
+
+			TwitterJsonParser firstMinPositionParser = new TwitterJsonParser(firstConnectResult , "data-max-position");
+			String currentMinPosition = firstMinPositionParser.getNext();
+
+			if (currentMinPosition == null)
+				toBeContinue = false;
+			else
+				currentMinPosition = currentMinPosition.replaceAll("\\\\" , "");
+
+
+			while (toBeContinue)
+			{
+				toBeContinue = false;
+
+				String timelineUrlString = "https://twitter.com/i/search/timeline?vertical=default&q="
+						+ imageInfo.keywordUTF8
+						+ "&src=typd&include_available_features=1&include_entities=1&max_position="
+						+ currentMinPosition;
+
+				String connectResult = null;
+
+				while (true)
+				{
+					try
+					{
+						connectResult = Jsoup.connect(timelineUrlString)
+								.header("X-Twitter-Active-User", "yes")
+								.header("X-Requested-With", "XMLHttpRequest")
+								.ignoreContentType(true).get().text();
+						break;
+					}
+					catch (IOException e)
+					{
+						System.out.println("Jsoup connect error 107: " + timelineUrlString);
+						try { Thread.sleep(5000); } catch (InterruptedException e1) { e1.printStackTrace(); }
+					}
+				}
+
+
+				TwitterJsonParser minPositionParser = new TwitterJsonParser(connectResult , "min_position");
+				currentMinPosition = minPositionParser.getNext();
+
+
+				TwitterJsonParser imageUrlParser = new TwitterJsonParser(connectResult , "data-image-url");
+
+				String imageUrl;
+				while ( (imageUrl = imageUrlParser.getNext()) != null )
+				{
+					toBeContinue = true;
+
+					imageUrl = imageUrl.replaceAll("\\\\", "");
+					String imageFilename = imageInfo.filename + "_" + StringUtils.leftPad("" + currentPageNumber++, 2, "0");
+
+					downloadQueue.add(new ImageInfo(imageUrl, imageFilename, imageInfo.parserIndex));
+					DownloadThread.notifyForTask();
+				}
+			}
 		}
-		catch (InterruptedException e) { e.printStackTrace(); }
+
+		System.out.println("Download completed !");
+	}
+}
+
+
+
+class TwitterJsonParser
+{
+	private String json = "";
+	private String keyword = "";
+	private int currentIndex = 0;
+
+
+	public TwitterJsonParser(String json , String keyword)
+	{
+		this.json = json;
+		this.keyword = keyword;
+	}
+
+	public String getNext()
+	{
+		int data_maxIndex = json.indexOf(keyword , currentIndex);
+
+		if(data_maxIndex ==  -1)
+			return null;
+
+		int data_maxIndexStart = json.indexOf("\"" , data_maxIndex + keyword.length() + 1) + 1;
+		int data_maxIndexEnd = json.indexOf("\"" , data_maxIndexStart);
+
+		currentIndex = data_maxIndexEnd + 1;
+
+		return json.substring(data_maxIndexStart , data_maxIndexEnd);
 	}
 }

@@ -40,6 +40,17 @@ public class DateCounter
 		}
 	}
 
+	public void increaseTotalDateBy1()
+	{
+		synchronized (lockForProgress)
+		{
+			++totalDate;
+
+			if(simpleDoubleProperty != null)
+				simpleDoubleProperty.set( (totalDate == 0) ? 0 : (completedDate / totalDate) );
+		}
+	}
+
 	public void addTotalDate(double totalDate)
 	{
 		synchronized (lockForProgress)

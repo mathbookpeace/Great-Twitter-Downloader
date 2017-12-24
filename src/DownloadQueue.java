@@ -8,6 +8,7 @@ public class DownloadQueue
 
 	private final Object lockForQueue;
 	private Queue <ImageInfo> downloadQueue;
+	private static DateCounter dateCounter = DateCounter.getInstance();
 
 
 	private DownloadQueue()
@@ -36,6 +37,8 @@ public class DownloadQueue
 
 	public void add(ImageInfo imageInfo)
 	{
+		dateCounter.increaseTotalDateBy1();
+
 		synchronized (lockForQueue)
 		{
 			downloadQueue.offer(imageInfo);

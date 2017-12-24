@@ -12,6 +12,7 @@ class DownloadThread extends Thread
 {
 	private DuplicatedImageChecker duplicatedImageChecker = DuplicatedImageChecker.getInstance();
 	private static DownloadQueue downloadQueue = DownloadQueue.getInstance();
+	private DateCounter dateCounter = DateCounter.getInstance();
 
 	private final int downloadTimeout = 30000;
 	private static Object waitKey = new Object();
@@ -80,8 +81,10 @@ class DownloadThread extends Thread
 				inputStream.close();
 				fileOutputStream.close();
 
-				if (duplicatedImageChecker.isExistImage(downloadFile, imageInfo.parserIndex))
+				if (duplicatedImageChecker.isExistImage(new File(filename), imageInfo.parserIndex))
 					downloadFile.delete();
+
+				dateCounter.increaseCompletedDateBy1();
 			}
 		}
 		catch (IOException e) { e.printStackTrace(); }
